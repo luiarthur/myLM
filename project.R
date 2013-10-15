@@ -1,4 +1,5 @@
 # DATA ENTRY:
+  #DATA <- read.table('bivNorm.dat',header=F)
   DATA <- matrix(c(3.05, 27, 25, 28, 24,
                    2.73, 19, 21, 10, 25,
                    3.55, 24, 31, 28, 31,
@@ -15,8 +16,8 @@
                    3.16, 21, 19, 21, 25,
                    3.23, 15, 22, 15, 26), byrow=T,ncol=5)
 
-  #DATA <- read.table('bivNorm.dat',header=F)
-
+  colnames(DATA) <- c('GPA', 'ENG', 'MATH', 'READING', 'Natural.Science')
+  
 # FUNCTION DEFINITION: my.lm
   my.lm <- function(Y, X) {
     n <- length(Y)
@@ -44,18 +45,59 @@
       ss <- as.numeric(1/(n-k-1) * t(Y - X%*%bH) %*% (Y-X%*%bH))
       se <- sqrt(diag(ss *  solve(t(X)%*%X)))
       t.stat <- bH/se
-      p.val <-  1- abs(pt(t.stat,n-k-1)-pt(-t.stat,n-k-1))
-            # try 2*(1-pt(abs(t.stat),n-k-1))
+      p.val <- 2*(1-pt(abs(t.stat),n-k-1))
       #pt(t.stat,n-k-1)
-      list('Coefficients'=cbind(bH,se,t.stat,p.val),'Sigma.Squared'=ss)
+ 
+      M <- cbind(bH,se,t.stat,p.val)
+      if(length(rownames(M))==0) {
+        rownames(M) <- paste('b',0:k,sep='') 
+      } else {
+        rownames(M) <- c('Intercept',rownames(M)[-1])
+      }
+      colnames(M) <- c('Estimates', 'Std.Error', 't.stat', 'p.value')
+      
+      return(list("Coefficients"=M,"s2"=ss,"Data:"=cbind(Y,X[,-1])))
+      
     }
   }
 
 # FUNCTION DEFINITION: Ho.C.my.lm:
-  Ho.C.my.lm <- function(C
+  C1 <- cbind(0,diag(4))
+  C2 <- c(0,0,1,0,0)
+
+  Ho.C.my.lm <- function(C,model){
+    mat <- is.matrix(C)
+    if (!mat){C <- t(as.matrix(C))}
+
+    bH <- model$Coefficients[,1]
+    CB <- C %*% bH
+    Y <- model$Data[,1]
+    X <- cbind(1,model$Data[,-1])
+    A <- solve (C %*% solve( t(X) %*% (X) ) %*% t(C) )
+    Q <- dim(C)[1]
+    n <- dim(X)[1]
+    k <- dim(X)[2] - 1
+
+    SSH <- t(CB) %*% A %*% (CB) 
+    SSE <- t(Y) %*% ( diag(n) - X %*% solve(t(X) %*% X) %*% t(X) ) %*% Y
+    
+    browser()
+    if ( mat ){
+      F.stat <- (SSH/Q) / (SSE/(n-k-1))
+      p <- pf(F.stat,Q, n-k-1,lower.tail=F)
+      c('F-Statistic'=F.stat, 'p-value'=p)
+    } else {
+      se <- sqrt(model$s2 * C %*% solve(t(X)%*%X) %*% t(C))
+      t.stat <- CB / se
+      p.val <- 2 * (1- pt(abs(t.stat), n-k-1))
+      c('Estimator'=CB, 'Std.Err'=se, 't.stat'=t.stat, 'p.val'=p.val )
+    }
+  }
 
 ############################################################################3
 # TEST & EXECUTE FUNCTIONS: 
-  summary(lm(DATA[,1] ~ DATA[,-1]))
-  my.lm(DATA[,1],DATA[,-1])
-
+  #summary(lm(DATA[,1] ~ DATA[,-1]))
+  mod <- my.lm(DATA[,1],DATA[,-1])
+  Ho.C.my.lm(C1,mod)
+  Ho.C.my.lm(C2,mod)
+  
