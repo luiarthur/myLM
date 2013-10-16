@@ -81,7 +81,7 @@
     SSH <- t(CB) %*% A %*% (CB) 
     SSE <- t(Y) %*% ( diag(n) - X %*% solve(t(X) %*% X) %*% t(X) ) %*% Y
     
-    browser()
+    #browser()
     if ( mat ){
       F.stat <- (SSH/Q) / (SSE/(n-k-1))
       p <- pf(F.stat,Q, n-k-1,lower.tail=F)
@@ -94,10 +94,37 @@
     }
   }
 
+  predict.my.lm <- function(xo,model){
+    outOfBound <- ifelse( all(apply(model$Data[,-1],2,min) <= xo) & 
+                          all(xo <= apply(model$Data[,-1],2,max)),F,T)
+    if (outOfBound) {
+      print("ERROR: xo is out of bound.")
+    } else {
+      xo <- c(1,xo)
+      beth  <- model$Coefficients[,1]
+      ss <- model$s2
+      X <- cbind(1,model$Data[,-1])
+      n <- dim(X)[1]
+      k <- dim(X)[2]-1
+      yoh <- t(xo) %*% beth
+      PI <- yoh + c(-1,1) * qt(.975, n-k-1) *
+            sqrt(ss*( 1 + t(xo) %*% solve(t(X)%*%X) %*% xo))
+
+      cat("\n")
+      c("Prediction"=yoh,"LowerBound"=PI[1],"UpperBound"=PI[2])
+    }
+  }
+
+  anova.my.lm <- function(type=c(1,3)[1],model){
+    
+
+    c("Source"=,"df"=,"SS"=)
+  }
+
 ############################################################################3
 # TEST & EXECUTE FUNCTIONS: 
   #summary(lm(DATA[,1] ~ DATA[,-1]))
-  mod <- my.lm(DATA[,1],DATA[,-1])
-  Ho.C.my.lm(C1,mod)
-  Ho.C.my.lm(C2,mod)
+  #mod <- my.lm(DATA[,1],DATA[,-1])
+  #Ho.C.my.lm(C1,mod)
+  #Ho.C.my.lm(C2,mod)
   
